@@ -65,10 +65,8 @@ def download_audio_features_batch(is_retry_failed_files: bool = False) -> bool:
         return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
     for chunk in chunker(df, 50):
-
         data_points = []
         for index, row in chunk.iterrows():
-
             if index % 1_000 == 0:  # type: ignore
                 print(f"{index}/{len(df)}")
 

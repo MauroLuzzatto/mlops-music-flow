@@ -152,7 +152,6 @@ class SpotifyAPI:
     def search_track_url(
         self, track: str, artist: Optional[str] = None, limit: int = 5
     ) -> str:
-
         # TODO: would be better to send the parameters as a dict
         # params = {
         #     'resource_id': '8ea44bc4-22ba-4386-b84c-1494ab28964b',

@@ -6,7 +6,6 @@ class BatchSpotifyAPI(SpotifyAPI):
         super().__init__()
 
     def get_batch_audio_features(self, track_ids: list[str]):
-
         if len(track_ids) > 100:
             raise Exception("too many values requested")
 
@@ -16,7 +15,6 @@ class BatchSpotifyAPI(SpotifyAPI):
         return response, status_code
 
     def get_batch_tracks(self, track_ids: list[str]):
-
         if len(track_ids) > 50:
             raise Exception("too many values requested")
 
@@ -26,7 +24,6 @@ class BatchSpotifyAPI(SpotifyAPI):
         return response, status_code
 
     def get_batch_artists(self, artist_ids: list[str]):
-
         if len(artist_ids) > 50:
             raise Exception("too many values requested")
 

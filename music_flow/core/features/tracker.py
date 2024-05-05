@@ -88,7 +88,6 @@ class Tracker:
         return track_id
 
     def _get_artist_id(self, response) -> Tuple[Optional[str], int]:
-
         artist_id = None
         try:
             artist_id = response["tracks"]["items"][0]["artists"][0]["id"]
