@@ -8,7 +8,7 @@ from music_flow.config import dataset_settings
 from music_flow.dataset import __version__ as data_version
 
 
-class TrainingData:
+class Dataset:
     def __init__(self, X, y) -> None:
         self.column_names = list(X)
 

@@ -19,6 +19,7 @@ class Endpoint:
 
     name: str
     func: Callable
+    args: dict
     description: str
 
 
@@ -37,17 +38,30 @@ def get_song_data_metadata(response: dict) -> dict:
     return metadata
 
 
-def get_track_id(track_name: str, artist_name: str) -> Tuple[Optional[str], int]:
-    """get the track_id from the Spotify API for a given track"""
+def search_track(track_name, artist_name):
     url = spotify_api.search_track_url(track_name, artist_name)
     response, status_code = spotify_api.get_request(url)
     logger.debug(f"status_code: {status_code}")
+    return response, status_code
+
+
+def get_track_id(response) -> Optional[str]:
+    """get the track_id from the Spotify API for a given track"""
+    track_id = None
     try:
         track_id = response["tracks"]["items"][0]["id"]
-    except (IndexError, KeyError, TypeError):
-        track_id = None
+    except (IndexError, KeyError):
         logger.debug("Failed to get track_id from Spotify API.")
-    return track_id, status_code
+    return track_id
+
+
+def get_artist_id(response) -> Optional[str]:
+    artist_id = None
+    try:
+        artist_id = response["tracks"]["items"][0]["artists"][0]["id"]
+    except (IndexError, KeyError):
+        logger.debug("Failed to get artist_id from Spotify API.")
+    return artist_id
 
 
 def get_raw_features(
@@ -62,7 +76,9 @@ def get_raw_features(
     }
 
     if not track_id:
-        track_id, status_code = get_track_id(track_name, artist_name)
+        response, status_code = search_track(track_name, artist_name)
+        track_id = get_track_id(response)
+        artist_id = get_artist_id(response)
         if not track_id:
             data["status"] = "failed"
             data["failure_type"] = "search_track_url"
@@ -73,6 +89,7 @@ def get_raw_features(
         Endpoint(
             name="audio_features",
             func=spotify_api.get_audio_features,
+            args={"track_id": track_id},
             description=(
                 "Failed to fetched data from Spotify API audio features endpoint."
             ),
@@ -80,14 +97,22 @@ def get_raw_features(
         Endpoint(
             name="track",
             func=spotify_api.get_track,
+            args={"track_id": track_id},
             description="Failed to fetched data from Sptofiy API track endpoint.",
         ),
         Endpoint(
             name="audio_analysis",
             func=spotify_api.get_audio_analysis,
+            args={"track_id": track_id},
             description=(
                 "Failed to fetched data from Spotify API audio analysis endpoint."
             ),
+        ),
+        Endpoint(
+            name="artist",
+            func=spotify_api.get_artist,
+            args={"artist_id": artist_id},
+            description=("Failed to fetched data from Spotify API artist endpoint."),
         ),
     ]
 
@@ -100,7 +125,7 @@ def get_raw_features(
 
     for endpoint in endpoints:
         name = endpoint.name
-        response, status_code = endpoint.func(track_id)
+        response, status_code = endpoint.func(**endpoint.args)
         logger.debug(f"endpoint: {endpoint.name}, status_code: {status_code}")
         if status_code == 200:
             data[name] = response

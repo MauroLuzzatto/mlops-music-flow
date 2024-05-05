@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from pprint import pprint
+import numpy as np
 
 import pandas as pd
 
@@ -16,8 +17,19 @@ from music_flow.core.utils import (
 logger = logging.getLogger(__name__)
 
 path_target_values = os.path.join(path_data, dataset_settings.TARGERT_VALUES)
-path_data_lake_failed = r"/Users/mauroluzzatto/Documents/python_scripts/track-recommender/data_lake_v2/failed"
-path_data_lake_success = r"/Users/mauroluzzatto/Documents/python_scripts/track-recommender/data_lake_v2/success"
+path_data_lake_failed = r"/Users/mauroluzzatto/Documents/python_scripts/track-recommender/data_lake_v3/failed"
+path_data_lake_success = r"/Users/mauroluzzatto/Documents/python_scripts/track-recommender/data_lake_v3/success"
+
+
+from music_flow.core.features.tracker import Tracker
+from dataclasses import dataclass
+
+
+@dataclass
+class DataPoint:
+    track_id: str
+    artist_id: str
+    data: dict
 
 
 def download_audio_features_batch(is_retry_failed_files: bool = False) -> bool:
@@ -38,9 +50,9 @@ def download_audio_features_batch(is_retry_failed_files: bool = False) -> bool:
     files_set = set(os.listdir(path_data_lake_success))
     number_of_files_success = len(os.listdir(path_data_lake_success))
 
-    print(
-        f"Files missing: {len(df) - number_of_files_failed - number_of_files_success}"
-    )
+    num_missing = len(df) - number_of_files_failed - number_of_files_success
+
+    print(f"Files missing: {num_missing}")
 
     success = 0.000001
     failed = 0
@@ -48,68 +60,87 @@ def download_audio_features_batch(is_retry_failed_files: bool = False) -> bool:
     start_time = time.time()
 
     batch = BatchSpotifyAPI()
-    data_collection = {}
 
-    for index, row in df.iterrows():
-        if index % 1_000 == 0:  # type: ignore
-            print(f"{index}/{len(df)}")
+    def chunker(seq, size):
+        return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
-        track_name: str = row["track_name"]
-        artist_name: str = row["artist_name"]
-        hash: str = row["hash"]
-        filename: str = f"{hash}.json"
-        if (
-            (filename in files_set) or (filename in files_failed_set)
-        ) or is_retry_failed_files:
-            continue
+    for chunk in chunker(df, 50):
 
-        data = {
-            "track_name": track_name,
-            "artist_name": artist_name,
-            "hash": hash,
-            "filename": filename,
-        }
-        try:
-            track_id, _ = get_track_id(track_name, artist_name)
-        except Exception:
-            print("track_id error")
-            track_id = None
+        data_points = []
+        for index, row in chunk.iterrows():
 
-        if not track_id:
-            failure_dict = {
-                "status": "failed",
-                "failure_type": "search_track_url",
-                "track_id": None,
+            if index % 1_000 == 0:  # type: ignore
+                print(f"{index}/{len(df)}")
+
+            track_name: str = row["track_name"]
+            artist_name: str = row["artist_name"]
+            hash: str = row["hash"]
+            filename: str = f"{hash}.json"
+            if (
+                (filename in files_set) or (filename in files_failed_set)
+            ) or is_retry_failed_files:
+                continue
+
+            data = {
+                "track_name": track_name,
+                "artist_name": artist_name,
+                "hash": hash,
+                "filename": filename,
             }
-            data.update(failure_dict)
-            failed += 1
-            save_dict_to_json(data, path_data_lake_failed, data["filename"])
+
+            try:
+                tracker = Tracker(name=track_name, artist=artist_name)
+                track_id = tracker.track_id
+                artist_id = tracker.artist_id
+            except Exception as e:
+                print(e)
+                track_id = None
+                artist_id = None
+
+            if not (track_id or artist_id):
+                failure_dict = {
+                    "status": "failed",
+                    "failure_type": "search_track_url",
+                    "track_id": None,
+                }
+                data.update(failure_dict)
+                failed += 1
+                save_dict_to_json(data, path_data_lake_failed, data["filename"])
+                continue
+
+            data_point = DataPoint(track_id, artist_id, data)
+            data_points.append(data_point)
+
+        track_ids = [data_point.track_id for data_point in data_points]
+        artist_ids = [data_point.artist_id for data_point in data_points]
+
+        if not track_ids:
             continue
 
-        data["track_id"] = track_id
-        data_collection[track_id] = data
-
-        if len(data_collection) < 50:
-            continue
-
-        ids = list(data_collection.keys())
-        response, _ = batch.get_batch_audio_features(ids)
+        response, _ = batch.get_batch_audio_features(track_ids)
         audio_features_dict = batch.convert_batch_response_to_dict(
             response["audio_features"]
         )
-        response, _ = batch.get_batch_tracks(ids)
+        response, _ = batch.get_batch_tracks(track_ids)
         tracks_dict = batch.convert_batch_response_to_dict(response["tracks"])
 
-        for track_id, data in data_collection.items():
+        response, _ = batch.get_batch_artists(artist_ids)
+        artists_dict = batch.convert_batch_response_to_dict(response["artists"])
+
+        for data_point in data_points:
+            track_id = data_point.track_id
+            artist_id = data_point.artist_id
+            data = data_point.data
+
+            # we are doing an all or nothing approach here
             try:
                 data["audio_features"] = audio_features_dict[track_id]
+                data["artist"] = artists_dict[artist_id]
                 data["track"] = tracks_dict[track_id]
                 data["status"] = "success"
             except Exception as e:
                 data["status"] = "failed"
                 print(e)
-
-            # print(track_id, data["status"], data["filename"])
 
             if data["status"] == "success":
                 save_dict_to_json(data, path_data_lake_success, data["filename"])
@@ -124,7 +155,6 @@ def download_audio_features_batch(is_retry_failed_files: bool = False) -> bool:
         end_time = time.time()
         print(f"Success: {int(success)}, Failed: {failed}, Ratio: {failed/success:.2f}")
         print(f"--> Elapsed time: {(end_time -start_time)/60:.2f} min")
-        data_collection = {}
 
         # if success > 150 and failed / success > 5.0:
         #     raise Exception("Too many failed requests")

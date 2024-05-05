@@ -17,7 +17,10 @@ class ModelRegistry:
     """Model Registry class, uploads and downloads models to a s3 bucket"""
 
     def __init__(
-        self, bucket_name: str, path_registry: str = None, path_upload: str = None
+        self,
+        bucket_name: str,
+        path_registry: Optional[str] = None,
+        path_upload: Optional[str] = None,
     ):
         self.bucket_name = bucket_name
 

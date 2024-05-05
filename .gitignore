@@ -1,6 +1,7 @@
 .DS_Store
 .vscode/
 data_v2/
+data_v3/
 
 data/*
 !data/raw/
@@ -12,8 +13,10 @@ data/raw/*
 
 docs/*
 
-data_lake_v2/*
-data_lake/*
+data_lake_v2/
+data_lake_v3/
+data_lake/
+
 _archive/
 tmp/
 

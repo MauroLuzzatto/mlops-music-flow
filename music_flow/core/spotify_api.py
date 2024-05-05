@@ -2,12 +2,14 @@ import json
 import logging
 import os
 import time
+from typing import Tuple, Optional
 
 import requests
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from requests.utils import requote_uri
 from urllib3.util.retry import Retry
+from functools import lru_cache
 
 from music_flow.core.utils import path_env
 
@@ -49,6 +51,7 @@ class SpotifyAPI:
         headers = {"Authorization": f"Bearer {token}"}
         return headers
 
+    @lru_cache(maxsize=None)
     def get_request(self, url: str, max_retries: int = 3, rate_limit: int = 1):
         """TODO: move to Base class
         Fetches data from the specified URL while respecting the rate limit.
@@ -126,27 +129,43 @@ class SpotifyAPI:
         response, status_code = self.get_request(url)
         return response, status_code
 
-    def get_track(self, id: str):
-        url = f"https://api.spotify.com/v1/tracks/{id}"
+    def get_track(self, track_id: str):
+        url = f"https://api.spotify.com/v1/tracks/{track_id}"
         response, status_code = self.get_request(url)
         return response, status_code
 
-    def get_audio_features(self, id: str):
-        url = f"https://api.spotify.com/v1/audio-features/{id}"
+    def get_audio_features(self, track_id: str):
+        url = f"https://api.spotify.com/v1/audio-features/{track_id}"
         response, status_code = self.get_request(url)
         return response, status_code
 
-    def get_albums(self, id: str):
-        url = f"https://api.spotify.com/v1/albums/{id}"
+    def get_albums(self, track_id: str):
+        url = f"https://api.spotify.com/v1/albums/{track_id}"
         response, status_code = self.get_request(url)
         return response, status_code
 
-    def search_track_url(self, track, artist=None):
+    def get_artist(self, artist_id: str) -> Tuple[dict, int]:
+        url = f"https://api.spotify.com/v1/artists/{artist_id}"
+        response, status_code = self.get_request(url)
+        return response, status_code
+
+    def search_track_url(
+        self, track: str, artist: Optional[str] = None, limit: int = 5
+    ) -> str:
+
+        # TODO: would be better to send the parameters as a dict
+        # params = {
+        #     'resource_id': '8ea44bc4-22ba-4386-b84c-1494ab28964b',
+        # }
+        # response = requests.get('http://www.example.com/', params=params)
+
+        search_type = "track"
         artist = "" if not artist else artist
         track = "" if not track else track
         track = self.clean_string(track)
         artist = self.clean_string(artist)
-        return f"https://api.spotify.com/v1/search?q=track:{track} artist:{artist}&type=track"
+        url = f"https://api.spotify.com/v1/search?q=track:{track} artist:{artist}&type={search_type}&limit={limit}"
+        return url
 
     def get_audio_analysis(self, id: str):
         url = f"https://api.spotify.com/v1/audio-analysis/{id}"

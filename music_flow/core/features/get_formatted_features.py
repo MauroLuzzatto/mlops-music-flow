@@ -63,13 +63,20 @@ def extract_features(data: dict) -> dict:
 
     album_dict = {
         "release_date_precision": track["album"]["release_date_precision"],
-        # "release_date": release_date,
         "release_year": year,
         "release_month": month,
         "release_day": day,
         "date_is_complete": date_is_complete,
         "album": track["album"]["name"],
     }
+
+    if "artist" in data:
+        artist_dict = {
+            "aritist_followers": data["artist"]["followers"]["total"],
+            "artist_popularity": data["artist"]["popularity"],
+            "artist_genres": data["artist"]["genres"],
+        }
+        features["artist"] = artist_dict
 
     features["track"] = track_dict
     features["album"] = album_dict

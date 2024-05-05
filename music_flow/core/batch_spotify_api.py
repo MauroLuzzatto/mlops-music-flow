@@ -5,26 +5,38 @@ class BatchSpotifyAPI(SpotifyAPI):
     def __init__(self):
         super().__init__()
 
-    def get_batch_audio_features(self, ids: list[str]):
-        if len(ids) > 100:
+    def get_batch_audio_features(self, track_ids: list[str]):
+
+        if len(track_ids) > 100:
             raise Exception("too many values requested")
 
-        ids_string = ",".join(ids)
+        ids_string = ",".join(track_ids)
         url = f"https://api.spotify.com/v1/audio-features?ids={ids_string}"
         response, status_code = self.get_request(url)
         return response, status_code
 
-    def get_batch_tracks(self, ids: list[str]):
-        if len(ids) > 50:
+    def get_batch_tracks(self, track_ids: list[str]):
+
+        if len(track_ids) > 50:
             raise Exception("too many values requested")
 
-        ids_string = ",".join(ids)
+        ids_string = ",".join(track_ids)
         url = f"https://api.spotify.com/v1/tracks?ids={ids_string}"
         response, status_code = self.get_request(url)
         return response, status_code
 
+    def get_batch_artists(self, artist_ids: list[str]):
+
+        if len(artist_ids) > 50:
+            raise Exception("too many values requested")
+
+        ids_string = ",".join(set(artist_ids))
+        url = f"https://api.spotify.com/v1/artists?ids={ids_string}"
+        response, status_code = self.get_request(url)
+        return response, status_code
+
     @staticmethod
-    def convert_batch_response_to_dict(responses):
+    def convert_batch_response_to_dict(responses) -> dict:
         try:
             output_dict = {audio["id"]: audio for audio in responses}
         except:

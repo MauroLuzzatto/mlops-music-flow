@@ -7,53 +7,14 @@ from xgboost import XGBRegressor  # type: ignore
 from music_flow.config import dataset_settings
 from music_flow.core.features.preprocessing import feature_preprocessing
 from music_flow.core.utils import create_folder, path_dataset, path_results
+from music_flow.model.dataset import Dataset
 from music_flow.model.evaluator import Evaluator
 from music_flow.model.file_handler import save_json
-from music_flow.model.training_data import TrainingData
+from music_flow.train import columns_scope, target_column
 
 path_dataset_file = os.path.join(path_dataset, dataset_settings.FINAL_DATASET)
 dataset = pd.read_csv(path_dataset_file, sep=";", index_col=0)  # type: ignore
 dataset = feature_preprocessing(dataset)
-
-# move to settings
-# add datatype to settings
-target_column = "plays"
-columns_scope = [
-    "number_of_available_markets",
-    "num_artists",
-    "duration_ms",
-    "explicit",
-    "popularity",
-    "release_year",
-    "release_month",
-    "release_day",
-    "date_is_complete",
-    "danceability",
-    "energy",
-    "loudness",
-    "mode",
-    "speechiness",
-    "acousticness",
-    "instrumentalness",
-    "liveness",
-    "valence",
-    "tempo",
-    "time_signature",
-    "A",
-    "A#/Bb",
-    "B",
-    "C",
-    "C#/Db",
-    "D",
-    "D#/Eb",
-    "E",
-    "F",
-    "F#/Gb",
-    "G",
-    "G#/Ab",
-    "Unknown",
-]
-
 
 X: pd.DataFrame = dataset[columns_scope]
 y: pd.Series = dataset[target_column]
@@ -61,7 +22,7 @@ y: pd.Series = dataset[target_column]
 print(X.describe().T)
 print(type(X))
 
-dataset = TrainingData(X=X, y=y)
+dataset = Dataset(X=X, y=y)
 dataset.do_train_test_split()
 X_test, y_test = dataset.get_test_data()
 X_train, y_train = dataset.get_training_data()

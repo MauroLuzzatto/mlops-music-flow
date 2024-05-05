@@ -16,16 +16,16 @@ from xgboost import XGBRegressor  # type: ignore
 from music_flow.config import model_settings
 from music_flow.core.features.preprocessing import reverse_prediction
 from music_flow.core.utils import create_folder
+from music_flow.model.dataset import Dataset
 from music_flow.model.evaluator import Evaluator
 from music_flow.model.file_handler import save_json
 from music_flow.model.logger import Logger
-from music_flow.model.training_data import TrainingData
 
 # enable autologging
 mlflow.sklearn.autolog()  # type: ignore
 
 
-class Training:
+class Trainer:
     """
     This class provides the funktionality to train a model using
     a random grid search and evaluate the results
@@ -344,7 +344,7 @@ if __name__ == "__main__":
     estimator = XGBRegressor()
     config = {"target": list(y)[0], "features": list(X)}
 
-    dataset = TrainingData(X=X, y=y)
+    dataset = Dataset(X=X, y=y)
     dataset.do_train_test_split()
     data_log = dataset.get_data_log()
     print(data_log)

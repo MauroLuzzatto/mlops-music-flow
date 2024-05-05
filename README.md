@@ -230,6 +230,8 @@ To set up an API with AWS SAM, follow these steps:
 - [] add model baseline
 - [] version the data
 - [] add model versioning
+- [ ] build a recommender option
+- [ ] add mkdocs
 
 <!--
 

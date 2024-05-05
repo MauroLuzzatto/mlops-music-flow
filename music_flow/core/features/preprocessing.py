@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from music_flow.config import model_settings
 
@@ -31,6 +32,18 @@ def get_one_hot_encoding(df, column):
     """
     df_one_hot = pd.get_dummies(df[column])
     df = df.drop(column, axis=1)
+    df = df.join(df_one_hot)
+    return df
+
+
+def list_to_one_hot_encoding(df, column):
+    df[column] = df[column].apply(
+        lambda row: [entry.strip() for entry in row[1:-1].split(",")]
+    )
+    mlb = MultiLabelBinarizer()
+    df_one_hot = pd.DataFrame(
+        mlb.fit_transform(df.pop(column)), columns=mlb.classes_, index=df.index
+    )
     df = df.join(df_one_hot)
     return df
 
@@ -96,8 +109,8 @@ def feature_preprocessing(dataset: pd.DataFrame):
 
     dataset["key"] = dataset["key"].apply(map_keys_to_string)
 
-    for column in ["key"]:
-        dataset = get_one_hot_encoding(dataset, column=column)
+    dataset = get_one_hot_encoding(dataset, column="key")
+    dataset = list_to_one_hot_encoding(dataset, column="artist_genres")
 
     all_keys = list(key_mapping.values()) + ["Unknown"]
     for col in all_keys:
